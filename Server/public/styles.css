@@ -1,0 +1,226 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#app {
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #efeae2;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ccc' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+}
+
+/* Header */
+#header {
+    display: flex;
+    align-items: center;
+    background: #075e54;
+    color: white;
+    padding: 10px 16px;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+#avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #25d366;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+#contact-name {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#status {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+#status.connected { color: #a8f5c0; }
+#status.disconnected { color: #ffb3b3; }
+
+/* Messages area */
+#messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 8px;
+    scroll-behavior: smooth;
+}
+
+#messages {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Message bubbles */
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 72%;
+    margin-bottom: 4px;
+}
+
+.message.sent {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.message.received {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.bubble {
+    padding: 7px 12px;
+    border-radius: 8px;
+    position: relative;
+    word-wrap: break-word;
+}
+
+.message.sent .bubble {
+    background: #d9fdd3;
+    border-top-right-radius: 2px;
+}
+
+.message.received .bubble {
+    background: #ffffff;
+    border-top-left-radius: 2px;
+}
+
+.bubble-text {
+    font-size: 14px;
+    color: #111b21;
+    line-height: 1.4;
+}
+
+.bubble-image {
+    max-width: 240px;
+    max-height: 300px;
+    width: 100%;
+    border-radius: 6px;
+    display: block;
+    cursor: pointer;
+}
+
+.bubble-image:hover {
+    opacity: 0.9;
+}
+
+.timestamp {
+    font-size: 10px;
+    color: #8696a0;
+    margin-top: 2px;
+    padding: 0 4px;
+}
+
+/* System messages */
+.system-message {
+    align-self: center;
+    background: rgba(0,0,0,0.15);
+    color: white;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    margin: 6px 0;
+}
+
+/* Input bar */
+#input-bar {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    background: #f0f2f5;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#image-btn {
+    color: #54656f;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+#image-btn:hover {
+    background: rgba(0,0,0,0.08);
+    color: #075e54;
+}
+
+#text-input {
+    flex: 1;
+    background: white;
+    border: none;
+    border-radius: 24px;
+    padding: 10px 16px;
+    font-size: 15px;
+    outline: none;
+    color: #111b21;
+}
+
+#text-input::placeholder { color: #8696a0; }
+
+#send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #075e54;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+#send-btn:hover { background: #128c7e; }
+#send-btn:active { background: #054d44; }
+
+/* Lightbox para imágenes */
+#lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+
+#lightbox.open { display: flex; }
+
+#lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    object-fit: contain;
+}
