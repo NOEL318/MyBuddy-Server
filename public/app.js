@@ -1,11 +1,14 @@
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
 
-const messagesEl = document.getElementById('messages');
-const statusEl = document.getElementById('status');
-const textInput = document.getElementById('text-input');
-const sendBtn = document.getElementById('send-btn');
-const imageInput = document.getElementById('image-input');
+const messagesEl    = document.getElementById('messages');
+const statusEl      = document.getElementById('status');
+const textInput     = document.getElementById('text-input');
+const sendBtn       = document.getElementById('send-btn');
+const imageInput    = document.getElementById('image-input');
+const avatarEl      = document.getElementById('avatar');
+const contactNameEl = document.getElementById('contact-name');
 
+// Lightbox para ver imágenes en grande
 const lightbox = document.createElement('div');
 lightbox.id = 'lightbox';
 const lightboxImg = document.createElement('img');
@@ -13,35 +16,45 @@ lightbox.appendChild(lightboxImg);
 document.body.appendChild(lightbox);
 lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
 
-let ws = null;
+let ws             = null;
 let reconnectTimer = null;
+let myUserId       = null;
+let myRecipientId  = null;
 
 // Establece la conexión WebSocket con el servidor e inicia reconexión automática si se cierra
 function connect() {
+    if (!myUserId || !myRecipientId) return;
     clearTimeout(reconnectTimer);
     setStatus('Conectando...', '');
 
     ws = new WebSocket(WS_URL);
 
     ws.addEventListener('open', () => {
-        ws.send(JSON.stringify({ type: 'identify', clientType: 'web' }));
-        setStatus('Esperando iPhone...', 'disconnected');
+        // Se identifica con el userId propio
+        ws.send(JSON.stringify({ type: 'identify', userId: myUserId }));
+        setStatus('En línea', 'connected');
     });
 
     ws.addEventListener('message', (event) => {
         const msg = JSON.parse(event.data);
 
         if (msg.type === 'peer_connected') {
-            setStatus('iPhone conectado', 'connected');
-            addSystemMessage('iPhone conectado');
+            if (msg.userId === myRecipientId) {
+                setStatus('Contacto en línea', 'connected');
+                addSystemMessage('Contacto conectado');
+            }
             return;
         }
         if (msg.type === 'peer_disconnected') {
-            setStatus('iPhone desconectado', 'disconnected');
-            addSystemMessage('iPhone desconectado');
+            if (msg.userId === myRecipientId) {
+                setStatus('Contacto desconectado', 'disconnected');
+                addSystemMessage('Contacto desconectado');
+            }
             return;
         }
 
+        // Solo muestra mensajes que provienen de nuestro destinatario
+        if (msg.from !== myRecipientId) return;
         renderMessage(msg, false);
     });
 
@@ -58,7 +71,7 @@ function connect() {
 // Actualiza el texto y la clase CSS del indicador de estado en el header
 function setStatus(text, className) {
     statusEl.textContent = text;
-    statusEl.className = className;
+    statusEl.className   = className;
 }
 
 // Envía el texto del input como mensaje de texto al servidor
@@ -67,9 +80,10 @@ function sendText() {
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
 
     const msg = {
-        type: 'text',
-        sender: 'web',
-        content: text,
+        type:      'text',
+        from:      myUserId,
+        to:        myRecipientId,
+        content:   text,
         timestamp: Date.now()
     };
 
@@ -87,10 +101,11 @@ function sendImage(file) {
         const base64 = e.target.result.split(',')[1];
 
         const msg = {
-            type: 'image',
-            sender: 'web',
-            content: base64,
-            mimeType: file.type,
+            type:      'image',
+            from:      myUserId,
+            to:        myRecipientId,
+            content:   base64,
+            mimeType:  file.type,
             timestamp: Date.now()
         };
 
@@ -110,14 +125,14 @@ function renderMessage(msg, isSent) {
 
     if (msg.type === 'text') {
         const textEl = document.createElement('span');
-        textEl.className = 'bubble-text';
+        textEl.className   = 'bubble-text';
         textEl.textContent = msg.content;
         bubbleEl.appendChild(textEl);
     } else if (msg.type === 'image') {
         const mimeType = msg.mimeType || 'image/jpeg';
-        const imgEl = document.createElement('img');
+        const imgEl    = document.createElement('img');
         imgEl.className = 'bubble-image';
-        imgEl.src = `data:${mimeType};base64,${msg.content}`;
+        imgEl.src       = `data:${mimeType};base64,${msg.content}`;
         imgEl.addEventListener('click', () => {
             lightboxImg.src = imgEl.src;
             lightbox.classList.add('open');
@@ -126,7 +141,7 @@ function renderMessage(msg, isSent) {
     }
 
     const timeEl = document.createElement('span');
-    timeEl.className = 'timestamp';
+    timeEl.className   = 'timestamp';
     timeEl.textContent = formatTime(msg.timestamp);
 
     msgEl.appendChild(bubbleEl);
@@ -135,10 +150,10 @@ function renderMessage(msg, isSent) {
     scrollToBottom();
 }
 
-// Muestra un mensaje de sistema centrado en el chat (ej: "iPhone conectado")
+// Muestra un mensaje de sistema centrado en el chat
 function addSystemMessage(text) {
     const el = document.createElement('div');
-    el.className = 'system-message';
+    el.className   = 'system-message';
     el.textContent = text;
     messagesEl.appendChild(el);
     scrollToBottom();
@@ -168,4 +183,22 @@ imageInput.addEventListener('change', (e) => {
     imageInput.value = '';
 });
 
-connect();
+// Maneja el formulario de login: guarda los IDs y conecta el WebSocket
+document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    myUserId      = document.getElementById('user-id-input').value.trim();
+    myRecipientId = document.getElementById('recipient-id-input').value.trim();
+    if (!myUserId || !myRecipientId) return;
+
+    // Muestra la interfaz principal y oculta el modal de login
+    document.getElementById('login-modal').style.display = 'none';
+    document.getElementById('app').style.display         = 'flex';
+
+    // Actualiza el header con la inicial del destinatario
+    const initial = myRecipientId.charAt(0).toUpperCase();
+    avatarEl.textContent      = initial;
+    contactNameEl.textContent = myRecipientId;
+
+    connect();
+});

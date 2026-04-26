@@ -224,3 +224,87 @@ body {
     border-radius: 8px;
     object-fit: contain;
 }
+
+/* Login modal */
+#login-modal {
+    position: fixed;
+    inset: 0;
+    background: #075e54;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+#login-card {
+    background: white;
+    border-radius: 16px;
+    padding: 36px 28px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+#login-logo {
+    font-size: 48px;
+}
+
+#login-card h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111b21;
+}
+
+#login-card p {
+    font-size: 13px;
+    color: #8696a0;
+    text-align: center;
+    line-height: 1.5;
+}
+
+#login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#login-form input {
+    width: 100%;
+    border: 1.5px solid #e9edef;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #111b21;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#login-form input:focus {
+    border-color: #128c7e;
+}
+
+#login-form input::placeholder {
+    color: #b0b8bf;
+}
+
+#login-form button {
+    background: #075e54;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 4px;
+}
+
+#login-form button:hover {
+    background: #128c7e;
+}

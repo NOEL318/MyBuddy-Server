@@ -7,11 +7,26 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="app">
+    <!-- Modal de login para ingresar userId y destinatario -->
+    <div id="login-modal">
+        <div id="login-card">
+            <div id="login-logo">💬</div>
+            <h1>MyBuddy Web</h1>
+            <p>Ingresa tu ID de usuario y el ID del contacto con quien quieres chatear.</p>
+            <form id="login-form">
+                <input type="text" id="user-id-input" placeholder="Tu User ID (Firebase UID)" required autocomplete="off">
+                <input type="text" id="recipient-id-input" placeholder="User ID del destinatario" required autocomplete="off">
+                <button type="submit">Conectar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Interfaz principal de chat (oculta hasta hacer login) -->
+    <div id="app" style="display:none">
         <header id="header">
-            <div id="avatar">M</div>
+            <div id="avatar">?</div>
             <div id="header-info">
-                <div id="contact-name">MyBuddy</div>
+                <div id="contact-name">Contacto</div>
                 <div id="status">Conectando...</div>
             </div>
         </header>
