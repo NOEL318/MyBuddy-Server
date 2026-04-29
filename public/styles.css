@@ -1,4 +1,3 @@
-/* ─── Reset & Base ───────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
@@ -21,7 +20,6 @@ html, body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Screen management ──────────────────────────────────────────── */
 .screen {
     display: none;
     flex-direction: column;
@@ -32,7 +30,6 @@ html, body {
 }
 .screen.active { display: flex; }
 
-/* ─── Logo circle ────────────────────────────────────────────────── */
 .logo-circle {
     border-radius: 50%;
     background: linear-gradient(135deg, var(--green-dark), var(--green-mid) 45%, var(--orange));
@@ -48,7 +45,6 @@ html, body {
 .logo-circle.small  { width: 40px;  height: 40px; }
 .logo-circle.small  svg { width: 18px; height: 18px; }
 
-/* ─── Auth screen ────────────────────────────────────────────────── */
 #auth-screen {
     background: var(--green-dark);
 }
@@ -89,7 +85,6 @@ html, body {
     letter-spacing: -0.3px;
 }
 
-/* Auth card */
 .auth-card {
     width: 100%;
     max-width: 400px;
@@ -103,7 +98,6 @@ html, body {
     gap: 12px;
 }
 
-/* Input rows */
 .input-row {
     display: flex;
     align-items: center;
@@ -135,7 +129,6 @@ html, body {
 }
 .input-row input::placeholder { color: #b0b8bf; }
 
-/* Field validation errors */
 .field-error {
     font-size: 11px;
     color: #e53935;
@@ -147,7 +140,6 @@ html, body {
 .input-row.invalid { border-color: rgba(229,57,53,0.5); }
 .input-row.invalid .input-icon { color: #e53935; }
 
-/* Global error message */
 .error-msg {
     font-size: 13px;
     color: #e53935;
@@ -157,7 +149,6 @@ html, body {
 }
 .error-msg:empty { display: none; }
 
-/* Primary button */
 .primary-btn {
     display: flex;
     align-items: center;
@@ -178,7 +169,6 @@ html, body {
 .primary-btn:active { transform: scale(0.98); }
 .primary-btn:disabled { opacity: 0.6; cursor: default; }
 
-/* Link button */
 .link-btn {
     background: none;
     border: none;
@@ -191,7 +181,6 @@ html, body {
 .link-btn span { color: var(--green-mid); font-weight: 600; }
 .link-btn:hover span { text-decoration: underline; }
 
-/* Spinner */
 .spinner {
     width: 20px;
     height: 20px;
@@ -203,7 +192,6 @@ html, body {
 .spinner.hidden { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── Directory screen ───────────────────────────────────────────── */
 #directory-screen {
     background: var(--surface);
 }
@@ -335,7 +323,6 @@ html, body {
     padding: 40px 20px;
 }
 
-/* ─── Chat screen ────────────────────────────────────────────────── */
 #chat-screen {
     background: var(--chat-bg);
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ccc' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
@@ -394,7 +381,6 @@ html, body {
 #status.connected    { color: #a8f5c0; }
 #status.disconnected { color: #ffb3b3; }
 
-/* Messages */
 #messages-container {
     flex: 1;
     overflow-y: auto;
@@ -464,7 +450,6 @@ html, body {
     margin: 6px 0;
 }
 
-/* Input bar */
 #input-bar {
     display: flex;
     align-items: center;
@@ -515,7 +500,6 @@ html, body {
 #send-btn:hover  { background: var(--green-mid); }
 #send-btn:active { background: #054d44; }
 
-/* ─── Lightbox ───────────────────────────────────────────────────── */
 #lightbox {
     display: none;
     position: fixed;

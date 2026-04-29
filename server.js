@@ -1,3 +1,4 @@
+// Servidor Node.js que sirve el cliente web estatico y enruta mensajes en tiempo real entre clientes a traves de WebSocket usando un userId como direccion
 const express   = require('express');
 const http      = require('http');
 const WebSocket = require('ws');
@@ -9,19 +10,19 @@ const wss    = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Mapa de userId → WebSocket para enrutar mensajes entre usuarios específicos
 const clients = new Map();
 
-// Formatea la fecha actual para los logs
+// Devuelve la fecha y hora actual en formato YYYY-MM-DD HH:MM:SS para usar en los logs
 function timestamp() {
     return new Date().toISOString().replace('T', ' ').substring(0, 19);
 }
 
+// Imprime un mensaje en la consola anteponiendo la marca de tiempo
 function log(msg) {
     console.log(`[${timestamp()}] ${msg}`);
 }
 
-// Endpoint de salud
+// Endpoint HTTP que reporta el estado del servidor, su uptime y la cantidad de usuarios conectados
 app.get('/health', (req, res) => {
     res.json({
         status:         'ok',
@@ -30,13 +31,12 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Maneja cada nueva conexión WebSocket
+// Maneja una nueva conexion WebSocket: identifica al cliente por userId, enruta sus mensajes al destinatario indicado y notifica eventos de presencia
 wss.on('connection', (ws) => {
     let userId = null;
 
-    log('[Server] Nueva conexión WebSocket');
+    log('[Server] Nueva conexion WebSocket');
 
-    // Heartbeat: detecta conexiones colgadas cada 30 segundos
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
 
@@ -45,11 +45,10 @@ wss.on('connection', (ws) => {
         try {
             message = JSON.parse(data.toString());
         } catch (e) {
-            log(`[Server] Mensaje inválido: ${e.message}`);
+            log(`[Server] Mensaje invalido: ${e.message}`);
             return;
         }
 
-        // Registro e identificación del cliente por userId
         if (message.type === 'identify') {
             userId = message.userId;
             if (!userId) {
@@ -57,17 +56,15 @@ wss.on('connection', (ws) => {
                 return;
             }
 
-            // Reemplaza conexión anterior del mismo usuario si existía
             const existing = clients.get(userId);
             if (existing && existing !== ws) {
-                log(`[Server] Reemplazando conexión anterior de ${userId}`);
+                log(`[Server] Reemplazando conexion anterior de ${userId}`);
                 existing.terminate();
             }
 
             clients.set(userId, ws);
             log(`[Server] Cliente identificado: ${userId} (total conectados: ${clients.size})`);
 
-            // Notifica a todos los demás clientes que este usuario está conectado
             clients.forEach((client, uid) => {
                 if (uid !== userId && client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({ type: 'peer_connected', userId }));
@@ -76,7 +73,6 @@ wss.on('connection', (ws) => {
             return;
         }
 
-        // Enruta el mensaje al destinatario indicado en el campo 'to'
         const targetId = message.to;
         if (!targetId) {
             log(`[Server] Mensaje de ${userId} sin campo 'to', descartado`);
@@ -90,13 +86,12 @@ wss.on('connection', (ws) => {
             const preview = message.type === 'text'
                 ? `"${String(message.content || '').substring(0, 40)}"`
                 : '[imagen]';
-            log(`[Server] ${userId} → ${targetId}: ${message.type} ${preview}`);
+            log(`[Server] ${userId} -> ${targetId}: ${message.type} ${preview}`);
         } else {
             log(`[Server] Destinatario ${targetId} no conectado, mensaje descartado`);
         }
     });
 
-    // Elimina al cliente y notifica a los demás que se desconectó
     ws.on('close', () => {
         if (userId) {
             if (clients.get(userId) === ws) {
@@ -117,11 +112,11 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Ping periódico para detectar conexiones muertas
+// Envia un ping cada 30 segundos a todos los clientes y termina las conexiones que no hayan respondido al pong anterior
 const heartbeatInterval = setInterval(() => {
     wss.clients.forEach((ws) => {
         if (!ws.isAlive) {
-            log('[Server] Terminando conexión sin respuesta de heartbeat');
+            log('[Server] Terminando conexion sin respuesta de heartbeat');
             return ws.terminate();
         }
         ws.isAlive = false;
@@ -131,7 +126,6 @@ const heartbeatInterval = setInterval(() => {
 
 wss.on('close', () => clearInterval(heartbeatInterval));
 
-// Inicia el servidor HTTP
 server.listen(process.env.PORT || 3000, () => {
     log(`[Server] MyBuddy corriendo en http://localhost:${process.env.PORT || 3000}`);
 });

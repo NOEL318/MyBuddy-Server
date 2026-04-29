@@ -1,6 +1,4 @@
-// ─── Firebase config ──────────────────────────────────────────────────────────
-// Obtén el appId de tu proyecto web en Firebase Console →
-// Configuración del proyecto → Tus apps → Web
+// Logica del cliente web de MyBuddy: autentica al usuario con Firebase, lista los demas usuarios, mantiene el chat en tiempo real con Firestore y sincroniza presencia y typing por WebSocket
 const firebaseConfig = {
     apiKey:            'AIzaSyBnE2LU6cxMnGSTy994T2nmmz2nlsAABXY',
     authDomain:        'test-b7426.firebaseapp.com',
@@ -15,12 +13,11 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-// ─── Estado global ────────────────────────────────────────────────────────────
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
 
-let currentUser      = null;   // firebase.User
-let currentProfile   = null;   // { uid, username, email }
-let recipientProfile = null;   // { uid, username, email }
+let currentUser      = null;
+let currentProfile   = null;
+let recipientProfile = null;
 let convId           = null;
 
 let ws               = null;
@@ -30,12 +27,11 @@ let allUsers         = [];
 let lastTypingSent   = 0;
 let typingHideTimer  = null;
 
-// ─── Lightbox ─────────────────────────────────────────────────────────────────
 const lightbox    = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightbox-img');
 lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
 
-// ─── Auth state ───────────────────────────────────────────────────────────────
+// Reacciona a los cambios de sesion: si hay usuario carga su perfil y muestra el directorio, si no lo hay limpia el estado y vuelve a la pantalla de login
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser    = user;
@@ -50,18 +46,19 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// ─── Navegación entre pantallas ───────────────────────────────────────────────
+// Muestra unicamente la pantalla cuyo id se pasa y oculta las demas
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
 
+// Muestra unicamente el panel de autenticacion (login o registro) cuyo id se pasa
 function showPanel(id) {
     document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
 
-// ─── Login ────────────────────────────────────────────────────────────────────
+// Maneja el envio del formulario de login validando los campos y autenticando al usuario contra Firebase Auth con email y contraseña
 document.getElementById('login-btn').addEventListener('click', async () => {
     const email    = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -81,7 +78,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 
     try {
         await auth.signInWithEmailAndPassword(email, password);
-        // onAuthStateChanged maneja la navegación
     } catch (e) {
         errorEl.textContent = authError(e);
         btn.disabled = false;
@@ -101,7 +97,7 @@ document.getElementById('goto-register-btn').addEventListener('click', () => {
     showPanel('register-panel');
 });
 
-// ─── Registro ─────────────────────────────────────────────────────────────────
+// Maneja el envio del formulario de registro: valida los campos, comprueba que el username no este en uso, crea el usuario en Firebase Auth y guarda su perfil en Firestore en una operacion atomica
 document.getElementById('register-btn').addEventListener('click', async () => {
     const username = document.getElementById('reg-username').value.trim();
     const email    = document.getElementById('reg-email').value.trim();
@@ -109,7 +105,6 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     const confirm  = document.getElementById('reg-confirm').value;
     const errorEl  = document.getElementById('register-error');
 
-    // Limpiar errores previos
     ['err-username','err-email','err-password','err-confirm'].forEach(id => {
         const el = document.getElementById(id);
         el.classList.add('hidden');
@@ -119,13 +114,13 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 
     let valid = true;
     if (username.length < 3) {
-        showFieldError('err-username', 'reg-username', 'Mínimo 3 caracteres'); valid = false;
+        showFieldError('err-username', 'reg-username', 'Minimo 3 caracteres'); valid = false;
     }
     if (!email.includes('@') || !email.includes('.')) {
-        showFieldError('err-email', 'reg-email', 'Correo no válido'); valid = false;
+        showFieldError('err-email', 'reg-email', 'Correo no valido'); valid = false;
     }
     if (password.length < 6) {
-        showFieldError('err-password', 'reg-password', 'Mínimo 6 caracteres'); valid = false;
+        showFieldError('err-password', 'reg-password', 'Minimo 6 caracteres'); valid = false;
     }
     if (password !== confirm) {
         showFieldError('err-confirm', 'reg-confirm', 'Las contraseñas no coinciden'); valid = false;
@@ -140,17 +135,15 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     spinner.classList.remove('hidden');
 
     try {
-        // Verificar unicidad del username antes de crear el usuario
         const usernameDoc = await db.collection('usernames').doc(username).get();
         if (usernameDoc.exists) {
-            showFieldError('err-username', 'reg-username', 'Ese nombre de usuario ya está en uso');
+            showFieldError('err-username', 'reg-username', 'Ese nombre de usuario ya esta en uso');
             return;
         }
 
         const result = await auth.createUserWithEmailAndPassword(email, password);
         const uid = result.user.uid;
 
-        // Crear perfil en Firestore (batch atómico, igual que iOS)
         const batch = db.batch();
         batch.set(db.collection('users').doc(uid), {
             username,
@@ -161,8 +154,6 @@ document.getElementById('register-btn').addEventListener('click', async () => {
         });
         batch.set(db.collection('usernames').doc(username), { uid });
         await batch.commit();
-
-        // onAuthStateChanged navegará al directorio automáticamente
     } catch (e) {
         errorEl.textContent = authError(e);
     } finally {
@@ -177,6 +168,7 @@ document.getElementById('goto-login-btn').addEventListener('click', () => {
     showPanel('login-panel');
 });
 
+// Muestra un mensaje de error junto a un campo del formulario y marca visualmente el campo como invalido
 function showFieldError(errId, inputId, msg) {
     const errEl = document.getElementById(errId);
     errEl.textContent = msg;
@@ -184,7 +176,7 @@ function showFieldError(errId, inputId, msg) {
     document.getElementById(inputId)?.closest('.input-row')?.classList.add('invalid');
 }
 
-// ─── Logout ───────────────────────────────────────────────────────────────────
+// Cierra la sesion del usuario actual, detiene los listeners de Firestore, desconecta el WebSocket y limpia la lista de usuarios cacheada
 document.getElementById('logout-btn').addEventListener('click', async () => {
     stopMessagesListener();
     disconnectWS();
@@ -192,7 +184,7 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
     await auth.signOut();
 });
 
-// ─── Directorio ───────────────────────────────────────────────────────────────
+// Prepara y muestra la pantalla del directorio limpiando estado anterior y cargando la lista de usuarios
 async function showDirectory() {
     stopMessagesListener();
     disconnectWS();
@@ -203,6 +195,7 @@ async function showDirectory() {
     await loadDirectory();
 }
 
+// Carga desde Firestore la lista de todos los usuarios registrados excluyendo al actual y la renderiza ordenada alfabeticamente
 async function loadDirectory() {
     const listEl = document.getElementById('user-list');
     listEl.innerHTML = '<div class="dir-empty">Cargando usuarios...</div>';
@@ -218,6 +211,7 @@ async function loadDirectory() {
     }
 }
 
+// Pinta en el DOM la lista de usuarios recibida y asigna a cada fila el evento click que abre el chat con ese contacto
 function renderUserList(users) {
     const listEl = document.getElementById('user-list');
     if (users.length === 0) {
@@ -255,7 +249,7 @@ document.getElementById('search-input').addEventListener('input', e => {
     renderUserList(filtered);
 });
 
-// ─── Chat ─────────────────────────────────────────────────────────────────────
+// Abre la pantalla de chat con el perfil indicado, calcula el id de la conversacion, inicia el listener de mensajes y abre el WebSocket
 function openChat(profile) {
     recipientProfile = profile;
     convId = conversationId(currentUser.uid, profile.uid);
@@ -280,11 +274,10 @@ document.getElementById('back-btn').addEventListener('click', () => {
     showDirectory();
 });
 
-// ─── Firestore messages listener ──────────────────────────────────────────────
+// Carga el historial reciente (ultimos 50 mensajes) de la conversacion actual y se suscribe en tiempo real a los nuevos mensajes que lleguen despues
 function startMessagesListener() {
     stopMessagesListener();
 
-    // Carga el historial (últimos 50) y luego escucha mensajes nuevos
     db.collection('conversations').doc(convId)
       .collection('messages')
       .orderBy('timestamp')
@@ -316,6 +309,7 @@ function startMessagesListener() {
       .catch(e => console.error('[Firestore] Error al cargar mensajes:', e));
 }
 
+// Cancela la suscripcion al listener de mensajes de Firestore si esta activa
 function stopMessagesListener() {
     if (messagesListener) {
         messagesListener();
@@ -323,7 +317,7 @@ function stopMessagesListener() {
     }
 }
 
-// ─── Envío de mensajes ────────────────────────────────────────────────────────
+// Toma el texto escrito en el input y lo guarda como mensaje en la conversacion actual de Firestore
 function sendText() {
     const textInput = document.getElementById('text-input');
     const text = textInput.value.trim();
@@ -339,6 +333,7 @@ function sendText() {
     }).catch(e => console.error('[Firestore] Error enviando texto:', e));
 }
 
+// Lee el archivo de imagen seleccionado, lo convierte a base64 y lo guarda como mensaje en la conversacion actual de Firestore
 function sendImage(file) {
     if (!file || !convId) return;
     const reader = new FileReader();
@@ -375,21 +370,21 @@ document.getElementById('image-input').addEventListener('change', e => {
     e.target.value = '';
 });
 
-// ─── WebSocket (solo typing indicator) ───────────────────────────────────────
+// Abre la conexion WebSocket con el servidor, se identifica con su userId y procesa los eventos de presencia (peer_connected/disconnected) y typing del contacto, reintentando la conexion si se cae
 function connectWS() {
     disconnectWS();
     ws = new WebSocket(WS_URL);
 
     ws.addEventListener('open', () => {
         ws.send(JSON.stringify({ type: 'identify', userId: currentUser.uid }));
-        setStatus('En línea', 'connected');
+        setStatus('En linea', 'connected');
     });
 
     ws.addEventListener('message', event => {
         try {
             const msg = JSON.parse(event.data);
             if (msg.type === 'peer_connected' && msg.userId === recipientProfile?.uid) {
-                setStatus('Contacto en línea', 'connected');
+                setStatus('Contacto en linea', 'connected');
                 addSystemMessage('Contacto conectado');
             } else if (msg.type === 'peer_disconnected' && msg.userId === recipientProfile?.uid) {
                 setStatus('Contacto desconectado', 'disconnected');
@@ -410,11 +405,13 @@ function connectWS() {
     ws.addEventListener('error', () => ws.close());
 }
 
+// Cierra la conexion WebSocket actual y cancela cualquier reintento de reconexion pendiente
 function disconnectWS() {
     clearTimeout(reconnectTimer);
     if (ws) { ws.close(); ws = null; }
 }
 
+// Envia al servidor por WebSocket una notificacion de que el usuario esta escribiendo, dirigida al destinatario actual
 function sendTypingWS() {
     if (ws?.readyState === WebSocket.OPEN && recipientProfile) {
         ws.send(JSON.stringify({
@@ -425,15 +422,16 @@ function sendTypingWS() {
     }
 }
 
+// Muestra durante 3 segundos el indicador escribiendo en la cabecera del chat antes de volver a En linea
 function showTypingStatus() {
     setStatus('escribiendo...', 'connected');
     clearTimeout(typingHideTimer);
     typingHideTimer = setTimeout(() => {
-        if (recipientProfile) setStatus('En línea', 'connected');
+        if (recipientProfile) setStatus('En linea', 'connected');
     }, 3000);
 }
 
-// ─── Render mensajes ──────────────────────────────────────────────────────────
+// Crea y agrega al DOM la burbuja de un mensaje individual (texto o imagen) junto con su hora, alineada a la derecha si es propio o a la izquierda si es recibido
 function renderMessage(msg) {
     const isSent  = msg.sender === currentUser.uid;
     const msgEl   = document.createElement('div');
@@ -468,6 +466,7 @@ function renderMessage(msg) {
     document.getElementById('messages').appendChild(msgEl);
 }
 
+// Agrega al chat un mensaje informativo del sistema (por ejemplo Contacto conectado o Contacto desconectado)
 function addSystemMessage(text) {
     const el = document.createElement('div');
     el.className   = 'system-message';
@@ -476,26 +475,30 @@ function addSystemMessage(text) {
     scrollToBottom();
 }
 
-// ─── UI helpers ───────────────────────────────────────────────────────────────
+// Actualiza el texto y la clase css del indicador de estado de la cabecera del chat
 function setStatus(text, className) {
     const el = document.getElementById('status');
     el.textContent = text;
     el.className   = className;
 }
 
+// Hace scroll automaticamente hasta el final del contenedor de mensajes
 function scrollToBottom() {
     const c = document.getElementById('messages-container');
     c.scrollTop = c.scrollHeight;
 }
 
+// Convierte un timestamp en milisegundos a una hora con formato HH:MM en la zona horaria local
 function formatTime(ts) {
     return new Date(ts).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Genera un id deterministico para la conversacion entre dos usuarios uniendo sus uid en orden alfabetico para que ambos lados obtengan el mismo
 function conversationId(uid1, uid2) {
     return [uid1, uid2].sort().join('_');
 }
 
+// Obtiene desde Firestore el documento de perfil del uid indicado y devuelve un objeto con username y email
 async function fetchProfile(uid) {
     try {
         const doc = await db.collection('users').doc(uid).get();
@@ -504,19 +507,21 @@ async function fetchProfile(uid) {
     return { uid, username: '', email: currentUser?.email ?? '' };
 }
 
+// Traduce los codigos de error de Firebase Auth a un mensaje claro en español que se le muestra al usuario
 function authError(e) {
     const code = e.code || '';
-    if (code.includes('invalid-email'))          return 'El correo no tiene un formato válido.';
+    if (code.includes('invalid-email'))          return 'El correo no tiene un formato valido.';
     if (code.includes('wrong-password') ||
         code.includes('invalid-credential'))     return 'Correo o contraseña incorrectos.';
     if (code.includes('user-not-found'))         return 'No existe una cuenta con ese correo.';
     if (code.includes('email-already-in-use'))   return 'Ya existe una cuenta con ese correo.';
-    if (code.includes('weak-password'))          return 'La contraseña es demasiado débil.';
-    if (code.includes('network-request-failed')) return 'Sin conexión. Revisa tu internet.';
-    if (code.includes('too-many-requests'))      return 'Demasiados intentos. Intenta más tarde.';
-    return 'Ocurrió un error. Intenta de nuevo.';
+    if (code.includes('weak-password'))          return 'La contraseña es demasiado debil.';
+    if (code.includes('network-request-failed')) return 'Sin conexion. Revisa tu internet.';
+    if (code.includes('too-many-requests'))      return 'Demasiados intentos. Intenta mas tarde.';
+    return 'Ocurrio un error. Intenta de nuevo.';
 }
 
+// Escapa los caracteres especiales de un string para evitar inyeccion de HTML cuando se interpola en innerHTML
 function escapeHtml(str) {
     return String(str)
         .replace(/&/g, '&amp;')
